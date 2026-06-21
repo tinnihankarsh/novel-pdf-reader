@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Novel PDF Reader">
+<meta name="application-name" content="Novel PDF Reader">
+<meta name="theme-color" id="tc" content="#7a4f28">
+<link rel="manifest" href="/manifest.json">
+<title>Novel PDF Reader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+<style>
+:root{
+  --bg:#f0e6d0;--paper:#fdf6e3;--text:#3b2f1e;--muted:#7a6652;
+  --border:#d4c5a9;--accent:#8b5e3c;--accent2:#c49a6c;
+  --sbg:#e8d9c0;--hdr:#7a4f28;--hover:#ddd0b8;--active:#ccb99a;
+  --shadow:rgba(80,50,20,.12);--fs:18px;--lh:1.9;--ff:Georgia,serif;
+  --fw:700px;--mg:22px;--ta:left;
+  --sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+}
+body.light{--bg:#f4f4f4;--paper:#fff;--text:#111;--muted:#666;--border:#e0e0e0;--accent:#1a56db;--accent2:#76a9fa;--sbg:#efefef;--hdr:#1e3a5f;--hover:#e5e5e5;--active:#dce4f7;--shadow:rgba(0,0,0,.08);}
+body.dark {--bg:#181818;--paper:#222;--text:#e0d5c8;--muted:#8a7a6a;--border:#333;--accent:#c49a6c;--accent2:#e8c080;--sbg:#1e1e1e;--hdr:#111;--hover:#2a2a2a;--active:#36301e;--shadow:rgba(0,0,0,.35);}
+body.night{--bg:#0b0b15;--paper:#101020;--text:#c0b8e0;--muted:#6868a0;--border:#222235;--accent:#8070c8;--accent2:#a090e0;--sbg:#0e0e1e;--hdr:#070710;--hover:#181828;--active:#1e1e38;--shadow:rgba(0,0,0,.5);}
+body.grn  {--bg:#e4ede4;--paper:#eef6ee;--text:#182018;--muted:#507050;--border:#b8d4b8;--accent:#286028;--accent2:#50905a;--sbg:#d8e8d8;--hdr:#1a441a;--hover:#cce0cc;--active:#b4d0b4;--shadow:rgba(10,50,10,.08);}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);overflow:hidden;transition:background .2s,color .2s;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* ── SCREENS ── */
+.scr{position:fixed;inset:0;display:flex;flex-direction:column}
+#s-load{align-items:center;justify-content:flex-start;
+  padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));
+  gap:12px;text-align:center;background:var(--bg);overflow-y:auto}
+#s-read{display:none}
+
+/* ── LOAD SCREEN ── */
+.app-icon{font-size:52px;line-height:1;margin-top:8px}
+.app-name{font-family:Georgia,serif;font-size:24px;font-weight:700;color:var(--accent);line-height:1.2}
+.app-sub{font-size:13px;color:var(--muted);font-family:system-ui,sans-serif;line-height:1.5;max-width:280px}
+
+/* File open buttons row */
+.open-row{display:flex;gap:10px;width:100%;max-width:340px}
+.open-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:16px 8px;background:var(--paper);border:1.5px solid var(--border);
+  border-radius:12px;cursor:pointer;font-family:inherit}
+.open-btn:active{background:var(--active)}
+.open-btn-icon{font-size:28px}
+.open-btn-label{font-size:12px;font-weight:700;color:var(--accent);font-family:Georgia,serif}
+.open-btn-sub{font-size:11px;color:var(--muted);font-family:system-ui,sans-serif}
+
+/* My Books button */
+#mybooks-btn{width:100%;max-width:340px;display:flex;align-items:center;gap:12px;
+  padding:14px 16px;background:var(--paper);border:1.5px solid var(--border);
+  border-radius:12px;cursor:pointer;font-family:inherit;text-align:left}
+#mybooks-btn:active{background:var(--active)}
+.mb-i{font-size:26px;flex-shrink:0}.mb-t{flex:1;min-width:0}
+.mb-h{font-family:Georgia,serif;font-size:15px;font-weight:700;color:var(--accent)}
+.mb-s{font-size:12px;color:var(--muted);font-family:system-ui,sans-serif;margin-top:2px}
+.mb-arrow{font-size:20px;color:var(--accent2);flex-shrink:0}
+
+/* Discover section */
+#discover-btn{width:100%;max-width:340px;display:flex;align-items:center;gap:12px;
+  padding:14px 16px;background:var(--paper);border:1.5px solid var(--accent2);
+  border-radius:12px;cursor:pointer;font-family:inherit;text-align:left}
+#discover-btn:active{background:var(--active)}
+
+/* progress */
+#prog{width:100%;max-width:340px;display:none;flex-direction:column;align-items:center;gap:8px}
+#pbg{width:100%;height:8px;background:var(--border);border-radius:8px;overflow:hidden}
+#pbar{height:100%;background:var(--accent);width:0%;transition:width .2s;border-radius:8px}
+#pmsg{font-size:13px;color:var(--muted);text-align:center;font-family:system-ui,sans-serif}
+
+/* install card */
+#inst-card{width:100%;max-width:340px;background:var(--paper);
+  border:1.5px solid var(--border);border-radius:12px;
+  padding:13px 16px;display:flex;align-items:center;gap:12px;cursor:pointer}
+#inst-card:active{background:var(--active)}
+.ic-i{font-size:26px;flex-shrink:0}
+.ic-t{flex:1;min-width:0}
+.ic-h{font-family:Georgia,serif;font-size:14px;font-weight:700;color:var(--accent)}
+.ic-s{font-size:12px;color:var(--muted);font-family:system-ui,sans-serif;margin-top:2px;line-height:1.4}
+
+/* ── SHELF MODAL ── */
+#shelf-bg{display:none;position:fixed;inset:0;z-index:598;background:rgba(0,0,0,.4)}
+#shelf-bg.on{display:block}
+#shelf-modal{position:fixed;left:50%;top:50%;z-index:599;
+  transform:translate(-50%,-50%) scale(.94);opacity:0;pointer-events:none;
+  background:var(--paper);border:1.5px solid var(--border);border-radius:16px;
+  width:min(440px,92vw);max-height:82vh;display:flex;flex-direction:column;
+  box-shadow:0 12px 48px rgba(0,0,0,.25);transition:transform .2s,opacity .2s}
+#shelf-modal.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+#shelf-head{display:flex;align-items:center;padding:16px 18px 10px;flex-shrink:0}
+#shelf-title{font-family:Georgia,serif;font-size:16px;font-weight:700;color:var(--accent);flex:1}
+#shelf-close{background:var(--hover);border:none;border-radius:50%;width:32px;height:32px;
+  cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#shelf-close:active{background:var(--active)}
+#shelf-sub{padding:0 18px 10px;font-size:12px;color:var(--muted);font-family:system-ui,sans-serif;flex-shrink:0}
+#shelf-list{flex:1;overflow-y:auto;padding:0 14px 16px;-webkit-overflow-scrolling:touch}
+.shelf-empty{text-align:center;padding:30px 10px;color:var(--muted);font-family:system-ui,sans-serif;font-size:13px}
+.ri{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--bg);
+  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer}
+.ri:active{background:var(--active)}
+.ri-info{flex:1;min-width:0}
+.ri-name{font-family:Georgia,serif;font-size:14px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-meta{font-size:12px;color:var(--muted);margin-top:2px;font-family:system-ui,sans-serif}
+.ri-fmt{display:inline-block;font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;
+  background:var(--accent);color:#fff8f0;margin-right:4px;vertical-align:middle;font-family:system-ui}
+.ri-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;
+  padding:6px 8px;flex-shrink:0;line-height:1;min-width:36px;min-height:36px;
+  display:flex;align-items:center;justify-content:center;border-radius:6px}
+.ri-del:active{background:var(--hover);color:var(--text)}
+
+/* ── DISCOVER PANEL ── */
+#disc-bg{display:none;position:fixed;inset:0;z-index:598;background:rgba(0,0,0,.4)}
+#disc-bg.on{display:block}
+#disc-modal{position:fixed;left:50%;top:50%;z-index:599;
+  transform:translate(-50%,-50%) scale(.94);opacity:0;pointer-events:none;
+  background:var(--paper);border:1.5px solid var(--border);border-radius:16px;
+  width:min(440px,92vw);max-height:85vh;display:flex;flex-direction:column;
+  box-shadow:0 12px 48px rgba(0,0,0,.25);transition:transform .2s,opacity .2s}
+#disc-modal.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+#disc-head{display:flex;align-items:center;padding:16px 18px 10px;flex-shrink:0}
+#disc-title{font-family:Georgia,serif;font-size:16px;font-weight:700;color:var(--accent);flex:1}
+#disc-close{background:var(--hover);border:none;border-radius:50%;width:32px;height:32px;
+  cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center}
+#disc-close:active{background:var(--active)}
+#disc-body{flex:1;overflow-y:auto;padding:0 16px 16px;-webkit-overflow-scrolling:touch}
+#disc-search{display:flex;gap:8px;margin-bottom:14px}
+#disc-q{flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);font-size:14px;font-family:system-ui,sans-serif;outline:none}
+#disc-q:focus{border-color:var(--accent2)}
+#disc-go{padding:10px 16px;background:var(--accent);border:none;border-radius:8px;
+  color:#fff8f0;font-size:14px;font-weight:700;cursor:pointer;font-family:Georgia,serif}
+#disc-go:active{opacity:.8}
+#disc-results{min-height:60px}
+.disc-section{font-size:11px;font-weight:700;color:var(--accent2);text-transform:uppercase;
+  letter-spacing:.08em;font-family:system-ui,sans-serif;margin:14px 0 8px}
+.disc-link{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--bg);
+  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
+  text-decoration:none;color:var(--text)}
+.disc-link:active{background:var(--active)}
+.disc-link-icon{font-size:22px;flex-shrink:0}
+.disc-link-info{flex:1;min-width:0}
+.disc-link-name{font-family:Georgia,serif;font-size:14px;font-weight:700;color:var(--accent)}
+.disc-link-desc{font-size:12px;color:var(--muted);margin-top:2px;font-family:system-ui,sans-serif}
+.disc-result-item{padding:10px 12px;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;margin-bottom:8px}
+.disc-result-title{font-family:Georgia,serif;font-size:14px;font-weight:700;color:var(--text)}
+.disc-result-author{font-size:12px;color:var(--muted);margin:2px 0;font-family:system-ui,sans-serif}
+.disc-result-link{display:inline-block;margin-top:6px;padding:5px 12px;background:var(--accent);
+  color:#fff8f0;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;font-family:Georgia,serif}
+
+/* ── TOPBAR ── */
+#topbar{background:var(--hdr);padding:calc(8px + var(--sat)) 12px 8px;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;z-index:200;
+  padding-left:calc(12px + var(--sal));padding-right:calc(12px + var(--sar))}
+#mbtn{background:none;border:none;cursor:pointer;color:#fff8f0;font-size:22px;
+  padding:6px 8px;line-height:1;flex-shrink:0;border-radius:6px;min-width:40px;min-height:40px;
+  display:flex;align-items:center;justify-content:center}
+#mbtn:active{background:rgba(255,255,255,.2)}
+#ti{flex:1;min-width:0}
+.t1{font-size:12px;font-weight:700;color:#fff8f0;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-family:Georgia,serif}
+.t2{font-size:11px;color:rgba(255,248,240,.55);margin-top:1px;font-family:system-ui,sans-serif}
+.tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);
+  border-radius:6px;color:#fff8f0;font-size:13px;font-weight:700;padding:6px 11px;
+  cursor:pointer;flex-shrink:0;font-family:Georgia,serif;min-width:40px;min-height:36px;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.tbtn:active{background:rgba(255,255,255,.28)}
+.tbtn-ai{font-size:16px;padding:5px 9px}
+
+/* ── BODY ── */
+#rb{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* ── SIDEBAR ── */
+#sb{position:absolute;left:0;top:0;bottom:0;width:290px;background:var(--sbg);
+  border-right:1.5px solid var(--border);display:flex;flex-direction:column;
+  transform:translateX(-100%);transition:transform .25s ease;z-index:100}
+#sb.open{transform:translateX(0)}
+#ov{display:none;position:absolute;inset:0;background:rgba(0,0,0,.36);z-index:50}
+#ov.on{display:block}
+#sbh{padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sbt{font-family:Georgia,serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px}
+#srch{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--paper);color:var(--text);font-size:14px;font-family:system-ui,sans-serif;outline:none}
+#srch:focus{border-color:var(--accent2)}
+#chl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#chl::-webkit-scrollbar{width:4px}
+#chl::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.chr{display:flex;align-items:baseline;gap:8px;padding:11px 14px;cursor:pointer;border-left:3px solid transparent}
+.chr:active{background:var(--hover)}
+.chr.on{background:var(--active);border-left-color:var(--accent)}
+.chn{font-size:10px;font-weight:700;color:var(--accent2);min-width:28px;font-family:system-ui,sans-serif}
+.cht{font-size:13px;color:var(--text);line-height:1.35;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-family:Georgia,serif}
+.chr.on .cht{color:var(--accent);font-weight:700}
+
+/* ── CONTENT (scroll mode) ── */
+#cs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:18px 14px calc(22px + var(--sab));transition:none}
+#cs.page-mode{overflow:hidden}
+#cs::-webkit-scrollbar{width:5px}
+#cs::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+#cc{background:var(--paper);border:1px solid var(--border);border-radius:8px;
+  padding:22px var(--mg) 30px;max-width:var(--fw);margin:0 auto;
+  box-shadow:0 2px 10px var(--shadow);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+
+#ch-lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent2);margin-bottom:5px;font-family:system-ui,sans-serif}
+#ch-ttl{font-size:21px;font-weight:700;color:var(--text);margin-bottom:20px;
+  line-height:1.3;padding-bottom:14px;border-bottom:1.5px solid var(--border);font-family:Georgia,serif}
+#ch-body{font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);color:var(--text);text-align:var(--ta)}
+#ch-body p{margin:0 0 1em 0;text-indent:0}
+#ch-body p:last-child{margin-bottom:0}
+#ch-body p.dlg{margin-bottom:.5em}
+#ch-body .fns{margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+#ch-body .fns p{font-size:calc(var(--fs) * .85);line-height:1.6;color:var(--muted);margin-bottom:.5em}
+.fr{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+  padding:0 4px;border-radius:8px;background:var(--accent);color:#fff8f0;
+  font-size:10px;font-weight:700;font-family:system-ui;cursor:pointer;
+  vertical-align:super;line-height:1;margin:0 1px;border:none}
+.fr:active{opacity:.7}
+.fb{background:none;border:none;cursor:pointer;color:var(--accent);
+  font-size:11px;font-weight:700;font-family:system-ui;margin-right:4px;padding:0}
+
+/* ── PAGE MODE CONTROLS ── */
+#page-nav{display:none;position:absolute;bottom:0;left:0;right:0;
+  background:var(--bg);border-top:1px solid var(--border);
+  padding:10px 20px calc(12px + var(--sab));
+  display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:10}
+#page-nav.hidden{display:none}
+.pnb{padding:10px 20px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--paper);color:var(--accent);font-size:14px;font-weight:700;
+  font-family:Georgia,serif;cursor:pointer}
+.pnb:active{background:var(--active)}
+.pnb:disabled{opacity:.3;pointer-events:none}
+#page-info{font-size:12px;color:var(--muted);font-family:system-ui,sans-serif;text-align:center}
+
+/* nav (scroll mode) */
+#nr{display:flex;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}
+.nb{flex:1;padding:13px 6px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--accent);font-size:14px;font-weight:700;
+  font-family:Georgia,serif;cursor:pointer;text-align:center;min-height:44px}
+.nb:active{background:var(--active)}
+.nb:disabled{opacity:.3;pointer-events:none}
+#nm{flex:0 0 auto;font-size:11px;color:var(--muted);align-self:center;
+  white-space:nowrap;font-family:system-ui;text-align:center}
+#lch{text-align:center;padding:40px 0;color:var(--muted);font-family:system-ui;font-size:14px}
+
+/* ── FOOTNOTE POPUP ── */
+#fnbg{display:none;position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.28)}
+#fnbg.on{display:block}
+#fnpop{position:fixed;bottom:0;left:0;right:0;z-index:499;
+  background:var(--paper);border-top:2px solid var(--accent);border-radius:18px 18px 0 0;
+  padding:16px 18px calc(18px + var(--sab));transform:translateY(100%);
+  transition:transform .22s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 -4px 28px var(--shadow);max-height:52vh;overflow-y:auto}
+#fnpop.on{transform:translateY(0)}
+#fnh{display:flex;align-items:center;margin-bottom:10px}
+#fnlbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent2);font-family:system-ui;flex:1}
+#fnx{background:var(--hover);border:none;border-radius:50%;width:30px;height:30px;
+  cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center}
+#fntxt{font-size:15px;line-height:1.7;color:var(--text);font-family:var(--ff);margin-bottom:12px}
+#fngoto{display:block;width:100%;padding:10px;border:1.5px solid var(--border);
+  border-radius:8px;background:var(--bg);color:var(--accent);
+  font-size:13px;font-weight:700;font-family:system-ui;cursor:pointer;text-align:center}
+#fngoto:active{background:var(--active)}
+
+/* ── AI PANEL ── */
+#ai-bg{display:none;position:fixed;inset:0;z-index:448;background:rgba(0,0,0,.3)}
+#ai-bg.on{display:block}
+#ai-panel{position:fixed;bottom:0;left:0;right:0;z-index:449;
+  background:var(--sbg);border-top:2px solid var(--accent2);border-radius:18px 18px 0 0;
+  padding:16px 16px calc(20px + var(--sab));transform:translateY(100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 -4px 28px var(--shadow);display:flex;flex-direction:column;height:62vh}
+#ai-panel.on{transform:translateY(0)}
+#ai-head{display:flex;align-items:center;margin-bottom:12px;flex-shrink:0}
+#ai-title{font-family:Georgia,serif;font-size:15px;font-weight:700;color:var(--accent);flex:1}
+#ai-close{background:var(--hover);border:none;border-radius:50%;width:30px;height:30px;
+  cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center}
+#ai-close:active{background:var(--active)}
+#ai-chat{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px;
+  display:flex;flex-direction:column;gap:10px}
+#ai-chat::-webkit-scrollbar{width:4px}
+#ai-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.ai-msg{padding:10px 13px;border-radius:12px;font-size:14px;line-height:1.6;font-family:system-ui;max-width:90%}
+.ai-msg.user{background:var(--accent);color:#fff8f0;align-self:flex-end;border-radius:12px 12px 2px 12px}
+.ai-msg.bot{background:var(--paper);color:var(--text);border:1px solid var(--border);align-self:flex-start;border-radius:2px 12px 12px 12px}
+.ai-msg.bot.loading{color:var(--muted)}
+#ai-input-row{display:flex;gap:8px;flex-shrink:0}
+#ai-input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;
+  background:var(--paper);color:var(--text);font-size:14px;font-family:system-ui;outline:none;resize:none;
+  max-height:80px;min-height:44px}
+#ai-input:focus{border-color:var(--accent2)}
+#ai-send{padding:11px 16px;background:var(--accent);border:none;border-radius:10px;
+  color:#fff8f0;font-size:18px;cursor:pointer;flex-shrink:0;min-width:44px}
+#ai-send:active{opacity:.8}
+#ai-send:disabled{opacity:.4}
+.ai-hint{font-size:12px;color:var(--muted);font-family:system-ui;text-align:center;
+  padding:8px 0;flex-shrink:0;line-height:1.4}
+
+/* ── SETTINGS DRAWER ── */
+#sdd{position:absolute;bottom:0;left:0;right:0;background:var(--sbg);
+  border-top:1.5px solid var(--border);border-radius:18px 18px 0 0;
+  padding:16px 18px calc(22px + var(--sab));
+  transform:translateY(100%);transition:transform .25s ease;z-index:150;
+  overflow-y:auto;max-height:92vh}
+#sdd.on{transform:translateY(0)}
+.sdh{font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:10px;
+  letter-spacing:.08em;text-transform:uppercase;font-family:system-ui}
+.sdr{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.sdl{font-size:13px;color:var(--muted);width:72px;flex-shrink:0;font-family:system-ui}
+.sdbs{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.sdb{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--paper);color:var(--text);font-size:13px;font-family:Georgia,serif;cursor:pointer;min-height:36px}
+.sdb.on{background:var(--accent);border-color:var(--accent);color:#fff8f0}
+.sdb:active{opacity:.7}
+.sw{width:32px;height:32px;border-radius:8px;cursor:pointer;border:2.5px solid transparent;flex-shrink:0}
+.sw.on{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent2)}
+.sw-sp{background:#fdf6e3;border-color:#d4c5a9}
+.sw-li{background:#fff;border-color:#ddd}
+.sw-dk{background:#222;border-color:#333}
+.sw-ni{background:#101020;border-color:#222}
+.sw-gr{background:#eef6ee;border-color:#b8d4b8}
+.sdsep{height:1px;background:var(--border);margin:12px 0}
+.sda{display:block;width:100%;padding:11px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--paper);color:var(--text);font-size:13px;font-family:system-ui;cursor:pointer;
+  text-align:center;margin-bottom:8px}
+.sda:active{background:var(--active)}
+.sddone{display:block;width:100%;padding:13px;border:none;border-radius:8px;
+  background:var(--accent);color:#fff8f0;font-size:15px;font-weight:700;
+  font-family:Georgia,serif;cursor:pointer;text-align:center;margin-top:6px}
+.sddone:active{opacity:.8}
+
+/* range input */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+  background:var(--border);outline:none;margin:8px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;
+  border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--paper)}
+
+/* toggle switch */
+.toggle{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:13px;cursor:pointer;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;
+  background:white;border-radius:50%;transition:.2s}
+input:checked + .toggle-slider{background:var(--accent)}
+input:checked + .toggle-slider:before{transform:translateX(20px)}
+
+/* page swipe indicator */
+#swipe-hint{position:fixed;bottom:calc(60px + var(--sab));left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-family:system-ui;
+  padding:8px 16px;border-radius:20px;pointer-events:none;opacity:0;
+  transition:opacity .3s;z-index:300;white-space:nowrap}
+#swipe-hint.show{opacity:1}
+
+/* ── DESKTOP ── */
+@media(min-width:760px){
+  #sb{position:relative;transform:none!important;width:300px;flex-shrink:0}
+  #ov{display:none!important}
+  #cs{padding:28px 28px 60px}
+  #cc{padding:36px 52px 50px}
+  #ch-ttl{font-size:25px}
+  #fnpop{position:absolute;bottom:20px;left:50%;
+    transform:translateX(-50%) translateY(120%);
+    width:min(520px,85vw);border-radius:12px;border:1.5px solid var(--accent);max-height:44vh}
+  #fnpop.on{transform:translateX(-50%) translateY(0)}
+  #ai-panel{left:auto;right:0;width:min(400px,45vw);height:100%;border-radius:0;
+    border-top:none;border-left:2px solid var(--accent2);top:0;bottom:0;
+    transform:translateX(100%)}
+  #ai-panel.on{transform:translateX(0)}
+}
+
+@media(max-width:380px){
+  .tbtn{padding:5px 7px;font-size:12px}
+  #ch-ttl{font-size:18px}
+  .open-btn-label{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- FOOTNOTE POPUP -->
+<div id="fnbg" onclick="closeFn()"></div>
+<div id="fnpop">
+  <div id="fnh">
+    <span id="fnlbl">Translator's Note</span>
+    <button id="fnx" onclick="closeFn()">✕</button>
+  </div>
+  <div id="fntxt"></div>
+  <button id="fngoto" onclick="fnBack()">↑ Jump back</button>
+</div>
+
+<!-- AI PANEL -->
+<div id="ai-bg" onclick="closeAI()"></div>
+<div id="ai-panel">
+  <div id="ai-head">
+    <span id="ai-title">🤖 AI Reading Assistant</span>
+    <button id="ai-close" onclick="closeAI()">✕</button>
+  </div>
+  <div id="ai-chat"></div>
+  <div class="ai-hint" id="ai-hint">Ask about characters, terms, or request a summary · ~600 tokens/reply</div>
+  <div id="ai-input-row">
+    <textarea id="ai-input" placeholder="Ask anything about this chapter…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+      oninput="autoResizeTA(this)"></textarea>
+    <button id="ai-send" onclick="sendAI()">➤</button>
+  </div>
+</div>
+
+<!-- DISCOVER MODAL -->
+<div id="disc-bg" onclick="closeDiscover()"></div>
+<div id="disc-modal">
+  <div id="disc-head">
+    <span id="disc-title">🌐 Find Novels</span>
+    <button id="disc-close" onclick="closeDiscover()">✕</button>
+  </div>
+  <div id="disc-body">
+    <div id="disc-search">
+      <input type="text" id="disc-q" placeholder="Search for a novel…"
+        onkeydown="if(event.key==='Enter')searchBooks()" autocorrect="off" spellcheck="false">
+      <button id="disc-go" onclick="searchBooks()">Search</button>
+    </div>
+    <div id="disc-results">
+      <div class="disc-section">Xanxia &amp; Web Novels (Free)</div>
+      <a class="disc-link" href="https://www.royalroad.com/fictions/best-rated?tagsAdd=&tagsRemove=&genres=Xianxia&genres=Cultivation&type=ONGOING" target="_blank" rel="noopener">
+        <span class="disc-link-icon">⚔️</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">Royal Road — Xianxia/Cultivation</div>
+          <div class="disc-link-desc">Free web novels with EPUB export · original English xanxia</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://www.wuxiaworld.com/novels" target="_blank" rel="noopener">
+        <span class="disc-link-icon">🐉</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">WuxiaWorld — Xanxia / Wuxia</div>
+          <div class="disc-link-desc">Largest translated xanxia library · free preview chapters</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://www.lightnovelworld.co/genre/xianxia" target="_blank" rel="noopener">
+        <span class="disc-link-icon">📜</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">Light Novel World — Xianxia</div>
+          <div class="disc-link-desc">Translated Chinese web novels · free full chapters</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://freewebnovel.com/xianxia" target="_blank" rel="noopener">
+        <span class="disc-link-icon">🌟</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">FreeWebNovel — Xianxia</div>
+          <div class="disc-link-desc">Free Chinese web novel translations · cultivation novels</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://www.novelupdates.com/series-finder/?sf=1&org=495&sort=rating&order=desc&genre=1050" target="_blank" rel="noopener">
+        <span class="disc-link-icon">🔍</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">NovelUpdates — Xianxia Directory</div>
+          <div class="disc-link-desc">Find translated xianxia novels · links to reading sites</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://www.scribblehub.com/series-finder/?sf=1&sort=toprated&order=desc&tag=cultivation" target="_blank" rel="noopener">
+        <span class="disc-link-icon">📝</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">ScribbleHub — Cultivation Tag</div>
+          <div class="disc-link-desc">Community web novels · download as EPUB</div>
+        </div>
+      </a>
+      <div class="disc-section">Classic &amp; Public Domain (Free EPUB Download)</div>
+      <a class="disc-link" href="https://standardebooks.org/ebooks?query=&sort=newest" target="_blank" rel="noopener">
+        <span class="disc-link-icon">📚</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">Standard Ebooks — Free Classics</div>
+          <div class="disc-link-desc">High-quality free EPUBs · classic literature</div>
+        </div>
+      </a>
+      <a class="disc-link" href="https://www.gutenberg.org/ebooks/search/?query=&format=epub" target="_blank" rel="noopener">
+        <span class="disc-link-icon">🏛️</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">Project Gutenberg — Public Domain</div>
+          <div class="disc-link-desc">50,000+ free EPUBs · classics &amp; history</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- SHELF MODAL -->
+<div id="shelf-bg" onclick="closeShelf()"></div>
+<div id="shelf-modal" role="dialog" aria-modal="true">
+  <div id="shelf-head">
+    <span id="shelf-title">📚 My Books</span>
+    <button id="shelf-close" onclick="closeShelf()">✕</button>
+  </div>
+  <div id="shelf-sub">Your saved books — tap to open instantly from cache.</div>
+  <div id="shelf-list"></div>
+</div>
+
+<!-- LOAD SCREEN -->
+<div class="scr" id="s-load">
+  <div class="app-icon"><img src="/assets/icon.png" alt="Novel Reader" style="width:52px;height:52px;border-radius:12px;object-fit:cover" onerror="this.outerHTML='📖'"></div>
+  <div class="app-name">Novel PDF Reader</div>
+  <div class="app-sub">Open PDF or EPUB novels. Works offline after install.</div>
+
+  <button id="mybooks-btn" onclick="openShelf()">
+    <span class="mb-i">📚</span>
+    <div class="mb-t">
+      <div class="mb-h">My Books</div>
+      <div class="mb-s" id="mybooks-sub">No books saved yet</div>
+    </div>
+    <span class="mb-arrow">›</span>
+  </button>
+
+  <div class="open-row">
+    <div class="open-btn" onclick="pickFile('pdf')" role="button" tabindex="0"
+      onkeydown="if(event.key==='Enter')pickFile('pdf')">
+      <span class="open-btn-icon">📄</span>
+      <span class="open-btn-label">Open PDF</span>
+      <span class="open-btn-sub">Novel PDFs</span>
+    </div>
+    <div class="open-btn" onclick="pickFile('epub')" role="button" tabindex="0"
+      onkeydown="if(event.key==='Enter')pickFile('epub')">
+      <span class="open-btn-icon">📱</span>
+      <span class="open-btn-label">Open EPUB</span>
+      <span class="open-btn-sub">.epub eBooks</span>
+    </div>
+    <div class="open-btn" onclick="pickFile('any')" role="button" tabindex="0"
+      onkeydown="if(event.key==='Enter')pickFile('any')">
+      <span class="open-btn-icon">📂</span>
+      <span class="open-btn-label">Browse</span>
+      <span class="open-btn-sub">PDF or EPUB</span>
+    </div>
+  </div>
+
+  <button id="discover-btn" onclick="openDiscover()">
+    <span class="mb-i">🌐</span>
+    <div class="mb-t">
+      <div class="mb-h">Find Novels Online</div>
+      <div class="mb-s">Royal Road, WuxiaWorld, Light Novel World &amp; more</div>
+    </div>
+    <span class="mb-arrow">›</span>
+  </button>
+
+  <div id="prog">
+    <div id="pbg"><div id="pbar"></div></div>
+    <div id="pmsg">Starting…</div>
+  </div>
+
+  <div id="inst-card" onclick="doInstall()">
+    <span class="ic-i">📲</span>
+    <div class="ic-t">
+      <div class="ic-h">Install as App</div>
+      <div class="ic-s" id="inst-sub">Add to Home Screen for offline use</div>
+    </div>
+    <span style="font-size:18px;color:var(--accent2)">›</span>
+  </div>
+</div>
+
+<!-- SWIPE HINT -->
+<div id="swipe-hint">Swipe ← → to turn pages</div>
+
+<!-- READER SCREEN -->
+<div class="scr" id="s-read">
+  <div id="topbar">
+    <button id="mbtn" onclick="toggleSB()" aria-label="Chapters">☰</button>
+    <div id="ti">
+      <div class="t1" id="tch">Novel PDF Reader</div>
+      <div class="t2" id="tsub">Loading…</div>
+    </div>
+    <button class="tbtn tbtn-ai" onclick="toggleAI()" title="AI Reading Assistant" aria-label="AI Assistant">🤖</button>
+    <button class="tbtn" onclick="toggleSD()" aria-label="Reading settings">Aa</button>
+  </div>
+  <div id="rb">
+    <div id="ov" onclick="closeSB()"></div>
+    <div id="sb">
+      <div id="sbh">
+        <div class="sbt" id="sbtitle">Chapters</div>
+        <input type="text" id="srch" placeholder="Search chapters…"
+          oninput="filterList(this.value)" autocomplete="off" autocorrect="off" autocapitalize="off">
+      </div>
+      <div id="chl"></div>
+    </div>
+    <div id="cs">
+      <div id="cc">
+        <div id="ch-lbl">Chapter</div>
+        <div id="ch-ttl">—</div>
+        <div id="ch-body"><div id="lch">Select a chapter to begin.</div></div>
+        <div id="nr">
+          <button class="nb" id="bp" onclick="navPrev()" disabled>← Prev</button>
+          <span id="nm"></span>
+          <button class="nb" id="bn" onclick="navNext()" disabled>Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings drawer -->
+    <div id="sdd">
+      <div class="sdh">Colour Theme</div>
+      <div class="sdr">
+        <span class="sdl">Theme</span>
+        <div class="sdbs">
+          <div class="sw sw-sp on" title="Sepia" onclick="setTheme('sepia',this)"></div>
+          <div class="sw sw-li" title="Light" onclick="setTheme('light',this)"></div>
+          <div class="sw sw-dk" title="Dark" onclick="setTheme('dark',this)"></div>
+          <div class="sw sw-ni" title="Night" onclick="setTheme('night',this)"></div>
+          <div class="sw sw-gr" title="Forest" onclick="setTheme('grn',this)"></div>
+        </div>
+      </div>
+      <div class="sdsep"></div>
+      <div class="sdh">Typography</div>
+      <div class="sdr">
+        <span class="sdl">Font Size</span>
+        <div style="flex:1">
+          <input type="range" id="fs-range" min="13" max="28" step="1" value="18"
+            oninput="setFSRange(this.value)" style="width:100%">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:system-ui;margin-top:2px">
+            <span>A</span><span id="fs-val">18px</span><span style="font-size:16px">A</span>
+          </div>
+        </div>
+      </div>
+      <div class="sdr">
+        <span class="sdl">Spacing</span>
+        <div class="sdbs" id="lhb">
+          <button class="sdb" onclick="setLH(1.5,this)">Tight</button>
+          <button class="sdb on" onclick="setLH(1.9,this)">Normal</button>
+          <button class="sdb" onclick="setLH(2.3,this)">Loose</button>
+          <button class="sdb" onclick="setLH(2.7,this)">Airy</button>
+        </div>
+      </div>
+      <div class="sdr">
+        <span class="sdl">Font</span>
+        <div class="sdbs" id="ffb">
+          <button class="sdb on" style="font-family:Georgia,serif" onclick="setFF('Georgia,serif',this)">Georgia</button>
+          <button class="sdb" style="font-family:Palatino,serif" onclick="setFF('Palatino Linotype,Palatino,serif',this)">Palatino</button>
+          <button class="sdb" style="font-family:Verdana,sans-serif" onclick="setFF('Verdana,sans-serif',this)">Verdana</button>
+          <button class="sdb" style="font-family:Arial,sans-serif" onclick="setFF('Arial,Helvetica,sans-serif',this)">Arial</button>
+          <button class="sdb" style="font-family:'Times New Roman',serif" onclick="setFF('Times New Roman,Times,serif',this)">Times</button>
+          <button class="sdb" style="font-family:'Courier New',monospace;font-size:12px" onclick="setFF('Courier New,monospace',this)">Courier</button>
+        </div>
+      </div>
+      <div class="sdr">
+        <span class="sdl">Align</span>
+        <div class="sdbs" id="tab">
+          <button class="sdb on" onclick="setTA('left',this)">≡ Left</button>
+          <button class="sdb" onclick="setTA('justify',this)">▤ Justify</button>
+        </div>
+      </div>
+      <div class="sdr">
+        <span class="sdl">Margins</span>
+        <div class="sdbs" id="mgb">
+          <button class="sdb" onclick="setMG('10px',this)">Narrow</button>
+          <button class="sdb on" onclick="setMG('22px',this)">Normal</button>
+          <button class="sdb" onclick="setMG('38px',this)">Wide</button>
+        </div>
+      </div>
+      <div class="sdr">
+        <span class="sdl">Width</span>
+        <div class="sdbs" id="fwb">
+          <button class="sdb" onclick="setFW('540px',this)">Narrow</button>
+          <button class="sdb on" onclick="setFW('700px',this)">Normal</button>
+          <button class="sdb" onclick="setFW('900px',this)">Wide</button>
+          <button class="sdb" onclick="setFW('100%',this)">Full</button>
+        </div>
+      </div>
+      <div class="sdsep"></div>
+      <div class="sdh">Navigation</div>
+      <div class="sdr">
+        <span class="sdl" style="width:auto;flex:1">Kindle Page Mode (swipe to flip pages)</span>
+        <label class="toggle">
+          <input type="checkbox" id="page-mode-toggle" onchange="togglePageMode(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="sdsep"></div>
+      <div class="sdh">App</div>
+      <button class="sda" onclick="doInstall()">📲 Install / Add to Home Screen</button>
+      <button class="sda" onclick="closeReader();if(sdOpen)toggleSD()">📂 Open Another File</button>
+      <button class="sddone" onclick="toggleSD()">Done</button>
+    </div>
+  </div>
+
+  <!-- Page mode nav bar -->
+  <div id="page-nav" style="display:none">
+    <button class="pnb" id="page-prev" onclick="flipPage(-1)">← Prev</button>
+    <div id="page-info">Page 1 / 1<br><span id="page-ch-info" style="font-size:11px;color:var(--muted)"></span></div>
+    <button class="pnb" id="page-next" onclick="flipPage(1)">Next →</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// PDF.JS WORKER
+// ════════════════════════════════════════════════════════════
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ════════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ════════════════════════════════════════════════════════════
+const SKIP_LABELS = /^(cover|coverpage|title\s*page?|titlepage|copyright|copyrights?|table\s*of\s*contents?|toc|contents?|index|glossary|preface|foreword|prologue?\s*(i|ii)?|information|info|about\s*(the\s*)?(author|book)|acknowledgements?|dedication|epigraph|front\s*matter|back\s*matter|appendix|also\s*by|advertisement|other\s*titles?|credits?)$/i;
+const SKIP_IDS = /^(cover|title|toc|nav|copyright|info|front|back|acknowledgement|preface)/i;
+
+let pdfDoc = null, epubBook = null, chapIndex = [], ci = 0;
+let sbOpen = false, sdOpen = false, aiOpen = false;
+let _fnMap = {}, _fnA = { n: null, c: null };
+let curBook = { title: 'Novel PDF Reader', author: '', format: 'pdf' };
+let isPageMode = false, currentPage = 0, totalPages = 0;
+let _pr = null;
+
+// ════════════════════════════════════════════════════════════
+// DEVICE ID
+// ════════════════════════════════════════════════════════════
+function getDeviceId() {
+  let id = localStorage.getItem('npr_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('npr_device_id', id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
+// ════════════════════════════════════════════════════════════
+// INDEXEDDB — FILE & CHAPTER STORAGE
+// ════════════════════════════════════════════════════════════
+const IDB_NAME = 'novelreader_v2', IDB_VER = 1;
+let _idb = null;
+
+async function openIDB() {
+  if (_idb) return _idb;
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('files'))
+        d.createObjectStore('files', { keyPath: 'name' });
+      if (!d.objectStoreNames.contains('chapters'))
+        d.createObjectStore('chapters', { keyPath: 'name' });
+    };
+    req.onsuccess = e => { _idb = e.target.result; res(_idb); };
+    req.onerror = rej;
+  });
+}
+
+async function idbGet(store, key) {
+  const d = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readonly');
+    const r = tx.objectStore(store).get(key);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = rej;
+  });
+}
+async function idbPut(store, value) {
+  const d = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    const r = tx.objectStore(store).put(value);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = rej;
+  });
+}
+async function idbDel(store, key) {
+  const d = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    const r = tx.objectStore(store).delete(key);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = rej;
+  });
+}
+async function idbGetAll(store) {
+  const d = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readonly');
+    const r = tx.objectStore(store).getAll();
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = rej;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// API CLIENT — Netlify Functions
+// ════════════════════════════════════════════════════════════
+async function apiGetLibrary() {
+  try {
+    const r = await fetch(`/api/library?device_id=${encodeURIComponent(DEVICE_ID)}`);
+    if (!r.ok) return [];
+    return await r.json();
+  } catch { return []; }
+}
+async function apiUpsertBook(meta) {
+  try {
+    await fetch('/api/library', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: DEVICE_ID, ...meta })
+    });
+  } catch {}
+}
+async function apiUpdateProgress(bookName, chapterIndex, pageIndex = 0) {
+  try {
+    await fetch('/api/library', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: DEVICE_ID, book_name: bookName, chapter_index: chapterIndex, page_index: pageIndex })
+    });
+  } catch {}
+}
+async function apiDeleteBook(bookName) {
+  try {
+    await fetch(`/api/library?device_id=${encodeURIComponent(DEVICE_ID)}&book_name=${encodeURIComponent(bookName)}`, { method: 'DELETE' });
+  } catch {}
+}
+
+// ════════════════════════════════════════════════════════════
+// LOCAL LIBRARY (localStorage fallback + source of truth)
+// ════════════════════════════════════════════════════════════
+function getLocalLib() {
+  try { return JSON.parse(localStorage.getItem('npr_books') || '[]'); } catch { return []; }
+}
+function saveLocalLib(arr) {
+  try { localStorage.setItem('npr_books', JSON.stringify(arr.slice(0, 20))); } catch {}
+}
+function localUpsertBook(bookName, chapterCount, chapterIndex, title, author, format) {
+  let lib = getLocalLib().filter(x => x.n !== bookName);
+  lib.unshift({ n: bookName, c: chapterCount, i: chapterIndex, d: Date.now(),
+    title: title || bookName, author: author || '', fmt: format || 'pdf' });
+  saveLocalLib(lib);
+}
+function localUpdateProgress(bookName, chapterIndex) {
+  const lib = getLocalLib().map(x => x.n === bookName ? { ...x, i: chapterIndex, d: Date.now() } : x);
+  saveLocalLib(lib);
+}
+function localDeleteBook(bookName) {
+  saveLocalLib(getLocalLib().filter(x => x.n !== bookName));
+}
+
+async function saveBook(bookName, chapterCount, chapterIndex, title, author, format) {
+  localUpsertBook(bookName, chapterCount, chapterIndex, title, author, format);
+  apiUpsertBook({ book_name: bookName, book_title: title || bookName, book_author: author || '',
+    book_format: format || 'pdf', chapter_count: chapterCount });
+}
+async function saveProgress(bookName, chapterIndex, pageIndex = 0) {
+  localUpdateProgress(bookName, chapterIndex);
+  apiUpdateProgress(bookName, chapterIndex, pageIndex);
+}
+async function deleteBook(bookName) {
+  localDeleteBook(bookName);
+  await idbDel('chapters', bookName);
+  await idbDel('files', bookName);
+  apiDeleteBook(bookName);
+}
+
+// Chapter index persistence (IDB + localStorage fallback)
+async function saveChapters(bookName, index) {
+  await idbPut('chapters', { name: bookName, index });
+  try { localStorage.setItem('npr_ci_' + kf(bookName), JSON.stringify(index)); } catch {}
+}
+async function loadChapters(bookName) {
+  const r = await idbGet('chapters', bookName);
+  if (r?.index) return r.index;
+  try {
+    const d = localStorage.getItem('npr_ci_' + kf(bookName));
+    return d ? JSON.parse(d) : null;
+  } catch { return null; }
+}
+
+function kf(s) {
+  try { return btoa(encodeURIComponent(s)).replace(/\W/g, '').slice(0, 24); }
+  catch { return String(Math.abs([...s].reduce((a, c) => a + c.charCodeAt(0), 0))).slice(0, 16); }
+}
+
+// ════════════════════════════════════════════════════════════
+// SHELF (MY BOOKS)
+// ════════════════════════════════════════════════════════════
+async function updateShelfBadge() {
+  const lib = getLocalLib();
+  document.getElementById('mybooks-sub').textContent =
+    lib.length ? `${lib.length} book${lib.length > 1 ? 's' : ''} in library` : 'No books saved yet';
+}
+
+async function renderShelf() {
+  const list = document.getElementById('shelf-list');
+  const lib = getLocalLib();
+  if (!lib.length) {
+    list.innerHTML = '<div class="shelf-empty">📖 No books yet.<br>Open a PDF or EPUB to get started.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const rec of lib) {
+    const el = document.createElement('div');
+    el.className = 'ri';
+    const fmt = rec.fmt || 'pdf';
+    el.innerHTML = `<span style="font-size:20px;flex-shrink:0">${fmt === 'epub' ? '📱' : '📄'}</span>
+      <div class="ri-info">
+        <div class="ri-name"><span class="ri-fmt">${fmt.toUpperCase()}</span>${xe(rec.title || rec.n)}</div>
+        <div class="ri-meta">${rec.c || 0} chapters · Ch.${(rec.i || 0) + 1} · ${new Date(rec.d).toLocaleDateString()}</div>
+      </div>
+      <button class="ri-del" title="Remove from library" aria-label="Remove from library">✕</button>`;
+
+    el.querySelector('.ri-del').addEventListener('click', async function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!confirm(`Remove "${rec.title || rec.n}" from library?`)) return;
+      await deleteBook(rec.n);
+      await renderShelf();
+      await updateShelfBadge();
+    });
+
+    el.addEventListener('click', async () => {
+      const fmt = rec.fmt || 'pdf';
+      closeShelf();
+
+      // Try to load directly from IDB file cache (no file picker needed)
+      const cached = await idbGet('files', rec.n);
+      if (cached?.buf) {
+        _pr = rec;
+        const synthFile = {
+          name: rec.n,
+          type: fmt === 'epub' ? 'application/epub+zip' : 'application/pdf',
+          arrayBuffer: () => Promise.resolve(cached.buf)
+        };
+        startLoad(synthFile);
+      } else {
+        // Fall back to file picker (first time or cache cleared)
+        _pr = rec;
+        pickFile(fmt);
+      }
+    });
+    list.appendChild(el);
+  }
+}
+
+function openShelf() {
+  renderShelf();
+  document.getElementById('shelf-bg').classList.add('on');
+  document.getElementById('shelf-modal').classList.add('on');
+}
+function closeShelf() {
+  document.getElementById('shelf-bg').classList.remove('on');
+  document.getElementById('shelf-modal').classList.remove('on');
+}
+
+// ════════════════════════════════════════════════════════════
+// DISCOVER
+// ════════════════════════════════════════════════════════════
+function openDiscover() {
+  document.getElementById('disc-bg').classList.add('on');
+  document.getElementById('disc-modal').classList.add('on');
+}
+function closeDiscover() {
+  document.getElementById('disc-bg').classList.remove('on');
+  document.getElementById('disc-modal').classList.remove('on');
+}
+
+async function searchBooks() {
+  const q = document.getElementById('disc-q').value.trim();
+  if (!q) return;
+  const res = document.getElementById('disc-results');
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-family:system-ui">Searching…</div>';
+  try {
+    const r = await fetch(`https://gutendex.com/books?search=${encodeURIComponent(q)}&mime_type=application%2Fepub`);
+    const data = await r.json();
+    const gutResults = (data.results || []).filter(b =>
+      b.formats?.['application/epub+zip'] || b.formats?.['application/epub']);
+
+    res.innerHTML = '';
+
+    if (gutResults.length) {
+      const sec = document.createElement('div');
+      sec.className = 'disc-section';
+      sec.textContent = 'Project Gutenberg Results (Free EPUB)';
+      res.appendChild(sec);
+      for (const book of gutResults.slice(0, 6)) {
+        const epubUrl = book.formats?.['application/epub+zip'] || book.formats?.['application/epub'];
+        const el = document.createElement('div');
+        el.className = 'disc-result-item';
+        el.innerHTML = `<div class="disc-result-title">${xe(book.title)}</div>
+          <div class="disc-result-author">${xe((book.authors || []).map(a => a.name).join(', ') || 'Unknown')}</div>
+          <a class="disc-result-link" href="${epubUrl}" target="_blank" rel="noopener">Download EPUB ↗</a>`;
+        res.appendChild(el);
+      }
+    }
+
+    // Always show "search on" links for web novels
+    const webSec = document.createElement('div');
+    webSec.className = 'disc-section';
+    webSec.textContent = gutResults.length ? 'Also Search Web Novel Sites' : 'Search on Web Novel Sites (Xanxia & more)';
+    res.appendChild(webSec);
+
+    const eq = encodeURIComponent(q);
+    const webLinks = [
+      { icon: '⚔️', name: 'Royal Road', url: `https://www.royalroad.com/fictions/search?title=${eq}` },
+      { icon: '🐉', name: 'WuxiaWorld', url: `https://www.wuxiaworld.com/novels?search=${eq}` },
+      { icon: '📜', name: 'Light Novel World', url: `https://www.lightnovelworld.co/lnwsearchlive?inputContent=${eq}` },
+      { icon: '🌟', name: 'FreeWebNovel', url: `https://freewebnovel.com/search/?searchkey=${eq}` },
+      { icon: '📝', name: 'ScribbleHub', url: `https://www.scribblehub.com/search/?q=${eq}` },
+      { icon: '🔍', name: 'NovelUpdates', url: `https://www.novelupdates.com/?s=${eq}` },
+    ];
+    for (const l of webLinks) {
+      const el = document.createElement('a');
+      el.className = 'disc-link';
+      el.href = l.url;
+      el.target = '_blank';
+      el.rel = 'noopener';
+      el.innerHTML = `<span class="disc-link-icon">${l.icon}</span>
+        <div class="disc-link-info">
+          <div class="disc-link-name">${l.name}</div>
+          <div class="disc-link-desc">Search "${xe(q)}" on ${l.name}</div>
+        </div>`;
+      res.appendChild(el);
+    }
+  } catch {
+    res.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-family:system-ui">Search failed. Check your connection.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// FILE PICKER
+// ════════════════════════════════════════════════════════════
+function pickFile(type) {
+  const old = document.getElementById('_fi');
+  if (old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.id = '_fi';
+  if (type === 'pdf') inp.accept = 'application/pdf,.pdf';
+  else if (type === 'epub') inp.accept = 'application/epub+zip,.epub,.zip';
+  else inp.accept = 'application/pdf,.pdf,application/epub+zip,.epub,.zip';
+  inp.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;opacity:0;z-index:-1';
+  inp.addEventListener('change', function() {
+    if (this.files && this.files.length) startLoad(this.files[0]);
+  });
+  document.body.appendChild(inp);
+  requestAnimationFrame(() => requestAnimationFrame(() => inp.click()));
+}
+
+function dropFile(e) {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f) startLoad(f);
+}
+
+// ════════════════════════════════════════════════════════════
+// LOAD DISPATCHER
+// ════════════════════════════════════════════════════════════
+async function startLoad(file) {
+  if (!file) return;
+  const nameLc = file.name.toLowerCase();
+  const isEpub = nameLc.endsWith('.epub') || nameLc.endsWith('.zip') ||
+    file.type === 'application/epub+zip' || file.type === 'application/zip';
+  const isPdf = nameLc.endsWith('.pdf') || file.type === 'application/pdf';
+
+  const pr = _pr; _pr = null;
+
+  // Fast path: use cached chapter index
+  if (pr && pr.n === file.name) {
+    const saved = await loadChapters(file.name);
+    if (saved && saved.length) {
+      showProg(); setP(15, 'Opening…');
+      try {
+        const buf = await file.arrayBuffer();
+        if (isEpub) {
+          epubBook = ePub(buf);
+          await epubBook.ready;
+        } else {
+          pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        }
+        chapIndex = saved;
+        curBook = { title: pr.title || file.name, author: pr.author || '', format: isEpub ? 'epub' : 'pdf' };
+        setP(100, `${saved.length} chapters (cached)`);
+        await tick();
+        setTimeout(() => showReader(file.name, pr.i || 0), 280);
+      } catch (e) { setP(0, 'Error: ' + e.message); }
+      return;
+    }
+  }
+
+  if (isEpub) await loadEpub(file);
+  else if (isPdf) await loadPdf(file);
+  else alert('Please open a PDF or EPUB file.');
+}
+
+// ════════════════════════════════════════════════════════════
+// EPUB LOADING & PARSING
+// ════════════════════════════════════════════════════════════
+async function loadEpub(file) {
+  showProg(); setP(5, 'Opening EPUB…');
+  try {
+    const buf = await file.arrayBuffer();
+    // Cache file for instant re-open from library
+    idbPut('files', { name: file.name, buf, ts: Date.now() }).catch(() => {});
+    setP(15, 'Parsing EPUB…');
+    epubBook = ePub(buf);
+    await epubBook.ready;
+    setP(30, 'Reading table of contents…');
+    await epubBook.loaded.navigation;
+    await epubBook.loaded.spine;
+
+    const info = await detectEpubInfo(epubBook, file.name);
+    curBook = { ...info, format: 'epub' };
+    setP(50, 'Building chapter list…');
+
+    let toc = epubBook.navigation?.toc || [];
+    let chapters = buildEpubChapterList(toc, epubBook);
+
+    // Fallback: use spine if TOC is empty or all filtered
+    if (chapters.length < 2) {
+      chapters = buildEpubSpineList(epubBook);
+    }
+
+    setP(70, `Found ${chapters.length} chapters, filtering…`);
+
+    // Filter very short chapters (title pages, image-only pages)
+    const filtered = await filterShortEpubChapters(chapters, epubBook);
+    chapIndex = filtered;
+
+    setP(100, `${chapIndex.length} chapters ready!`);
+    await saveChapters(file.name, chapIndex);
+    await tick();
+    setTimeout(() => showReader(file.name, 0), 280);
+  } catch (e) {
+    const msg = (e.message || '').toLowerCase();
+    if (msg.includes('zip') || msg.includes('jszip') || msg.includes('signature') || msg.includes('corrupt')) {
+      setP(0, 'EPUB Error: File may be corrupted or not a valid EPUB/ZIP. Try re-downloading it.');
+    } else if (msg.includes('timeout')) {
+      setP(0, 'EPUB Error: Timed out loading. File may be too large or damaged.');
+    } else {
+      setP(0, 'EPUB Error: ' + e.message);
+    }
+    console.error(e);
+  }
+}
+
+async function detectEpubInfo(book, filename) {
+  let title = '', author = '';
+  try {
+    await book.loaded.metadata;
+    title = book.packaging?.metadata?.title || '';
+    author = book.packaging?.metadata?.creator || '';
+    if (!title && book.packaging?.metadata?.['dc:title'])
+      title = book.packaging.metadata['dc:title'];
+  } catch {}
+  if (!title) title = filename.replace(/\.epub$/i, '').replace(/[_\-]+/g, ' ').trim();
+  return { title: title.trim(), author: (Array.isArray(author) ? author[0] : author || '').trim() };
+}
+
+function buildEpubChapterList(toc, book) {
+  const results = [];
+  const guide = book.packaging?.guide || [];
+  const guideTypes = {};
+  for (const g of guide) guideTypes[g.href?.split('#')[0]] = g.type;
+
+  function processItems(items, depth = 0) {
+    for (const item of items) {
+      const label = (item.label || '').trim();
+      const href = item.href || '';
+      const hrefBase = href.split('#')[0];
+
+      // Skip obvious non-chapter entries
+      if (SKIP_LABELS.test(label)) continue;
+
+      // Skip items marked as cover/toc/etc in guide
+      const gt = guideTypes[hrefBase];
+      if (gt && /cover|title|toc|copyright|acknowledgement/i.test(gt)) continue;
+
+      // Skip if ID looks like a non-chapter
+      const id = item.id || '';
+      if (SKIP_IDS.test(id)) continue;
+
+      results.push({ label, href, id });
+
+      if (item.subitems?.length && depth < 2) {
+        // Only recurse for shallow nesting (avoid bloat)
+        if (results.length > 0) {
+          processItems(item.subitems, depth + 1);
+        }
+      }
+    }
+  }
+  processItems(toc);
+  return results;
+}
+
+function buildEpubSpineList(book) {
+  const results = [];
+  const spineItems = book.spine?.spineItems || [];
+  for (const item of spineItems) {
+    const id = (item.idref || item.id || '').toLowerCase();
+    if (SKIP_IDS.test(id)) continue;
+    if (/\.(jpg|jpeg|png|gif|svg)$/i.test(item.href)) continue;
+    results.push({ label: item.idref || item.id || 'Chapter', href: item.href, id: item.id });
+  }
+  return results;
+}
+
+async function filterShortEpubChapters(chapters, book) {
+  const results = [];
+  for (const ch of chapters) {
+    try {
+      const item = book.spine.get(ch.href);
+      if (!item) { results.push(ch); continue; }
+      await item.load(book.load.bind(book));
+      const doc = item.document;
+      const text = doc ? (doc.body?.textContent || '').replace(/\s+/g, ' ').trim() : '';
+      item.unload();
+      // Skip if less than 200 chars (likely cover/title/image page)
+      if (text.length > 200) results.push(ch);
+    } catch {
+      results.push(ch); // Keep on error
+    }
+  }
+  return results.length > 0 ? results : chapters;
+}
+
+// ════════════════════════════════════════════════════════════
+// EPUB CHAPTER READING
+// ════════════════════════════════════════════════════════════
+async function readEpubChapter(ch) {
+  const item = epubBook.spine.get(ch.href);
+  if (!item) return '';
+  await item.load(epubBook.load.bind(epubBook));
+  const doc = item.document;
+  if (!doc) { item.unload(); return ''; }
+
+  const body = doc.querySelector('body') || doc.documentElement;
+  // Extract structured text preserving paragraphs
+  const text = extractHtmlText(body, doc);
+  item.unload();
+  return text;
+}
+
+function extractHtmlText(el, doc) {
+  let out = '';
+  const blockTags = new Set(['p','div','h1','h2','h3','h4','h5','h6','li','blockquote','section','article','td','th','tr']);
+  const skipTags = new Set(['script','style','nav','img']);
+
+  // Collect footnote/note content keyed by element id
+  const fnDefs = {};
+  if (doc) {
+    doc.querySelectorAll('[id]').forEach(node => {
+      const id = node.id;
+      // Match ids like fn1, footnote2, note3, en1, endnote4, etc.
+      if (/^(fn|note|endnote|footnote|en|n)\-?\d+/i.test(id) || /\d+$/.test(id)) {
+        const txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+        if (txt) fnDefs[id] = txt;
+      }
+    });
+  }
+
+  let autoFnN = 0;
+  const epubFnMap = {};
+
+  function walk(node) {
+    if (node.nodeType === 3) {
+      let t = node.textContent;
+      // Convert Unicode superscript digits to [n] markers
+      t = t.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, m => {
+        const map = {'¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁰':'0'};
+        const num = m.split('').map(c => map[c] || c).join('');
+        return '[' + num + ']';
+      });
+      if (t.trim()) out += t;
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName?.toLowerCase();
+    if (skipTags.has(tag)) return;
+
+    // Skip elements marked as footnote sections (collect their content separately)
+    const epubType = node.getAttribute?.('epub:type') || node.getAttribute?.('epub\\:type') || '';
+    if (/footnote|rearnote|endnote/.test(epubType)) {
+      const id = node.id;
+      if (id) {
+        const txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+        if (txt) fnDefs[id] = txt;
+      }
+      return;
+    }
+
+    // Superscript footnote reference: <sup>1</sup> or <sup><a href="#fn1">1</a></sup>
+    if (tag === 'sup') {
+      const linkEl = node.querySelector('a[href]');
+      const supText = (node.textContent || '').trim();
+
+      if (linkEl) {
+        const href = linkEl.getAttribute('href') || '';
+        const targetId = href.split('#').pop();
+        const numMatch = supText.match(/\d+/);
+        const refNum = numMatch ? parseInt(numMatch[0]) : ++autoFnN;
+
+        if (targetId && fnDefs[targetId]) {
+          // Clean up the footnote text (remove the back-reference number prefix)
+          epubFnMap[refNum] = fnDefs[targetId].replace(/^\d+\.\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
+        } else if (targetId) {
+          // Target not yet collected — store pending
+          epubFnMap[refNum] = `[see note ${refNum}]`;
+        }
+        out += `[${refNum}]`;
+      } else if (/^[\d¹²³⁴⁵⁶⁷⁸⁹⁰]+$/.test(supText) || /^[*†‡§¶]/.test(supText)) {
+        // Plain superscript number or symbol
+        const numMatch = supText.match(/\d+/);
+        const refNum = numMatch ? parseInt(numMatch[0]) : ++autoFnN;
+        out += `[${refNum}]`;
+      } else {
+        for (const c of node.childNodes) walk(c);
+      }
+      return;
+    }
+
+    if (blockTags.has(tag)) {
+      if (out && !out.endsWith('\n')) out += '\n';
+      for (const c of node.childNodes) walk(c);
+      if (!out.endsWith('\n')) out += '\n';
+    } else {
+      for (const c of node.childNodes) walk(c);
+    }
+  }
+
+  walk(el);
+
+  // Append collected EPUB footnotes in the format renderText expects
+  const fnKeys = Object.keys(epubFnMap).map(Number).sort((a, b) => a - b);
+  if (fnKeys.length) {
+    if (!out.endsWith('\n')) out += '\n';
+    out += '\n';
+    for (const n of fnKeys) {
+      out += `${n}. ${epubFnMap[n]}\n`;
+    }
+  }
+
+  return out.trim();
+}
+
+// ════════════════════════════════════════════════════════════
+// PDF LOADING & PARSING
+// ════════════════════════════════════════════════════════════
+async function loadPdf(file) {
+  showProg();
+  try {
+    const buf = await file.arrayBuffer();
+    // Cache file for instant re-open from library
+    idbPut('files', { name: file.name, buf, ts: Date.now() }).catch(() => {});
+    setP(5, 'Opening PDF…');
+    pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+    const info = await detectPdfInfo(pdfDoc, file.name);
+    curBook = { ...info, format: 'pdf' };
+    const tot = pdfDoc.numPages;
+    const seen = new Set(), raw = [];
+
+    for (let p = 1; p <= tot; p++) {
+      const tc = await (await pdfDoc.getPage(p)).getTextContent();
+      let pt = '';
+      for (const it of tc.items) { pt += it.str; if (it.hasEOL) pt += '\n'; else pt += ' '; }
+
+      // Try multiple chapter heading patterns
+      const patterns = [
+        /Chapter\s+(\d+)\s*[:\.\-–]\s*([^\n\r]{2,80})/i,
+        /Chapter\s+(\d+)\s*\n\s*([^\n\r]{2,80})/i,
+        /^(\d+)\.\s+([A-Z][^\n\r]{4,70})/m,
+        /CHAPTER\s+(\d+)\s*[:\.\-–]?\s*([^\n\r]{0,60})/,
+      ];
+
+      for (const pat of patterns) {
+        const m = pt.match(pat);
+        if (m) {
+          const n = parseInt(m[1]);
+          const t = (m[2] || `Chapter ${n}`).trim().replace(/\s+/g, ' ')
+            .replace(/[^\x20-\x7E -￿]/g, '').trim();
+          if (!seen.has(n) && n >= 1 && n <= 9999 && t.length > 0) {
+            seen.add(n); raw.push({ num: n, title: t || 'Chapter ' + n, sp: p });
+            break;
+          }
+        }
+      }
+
+      if (p % 100 === 0 || p === tot) {
+        setP(8 + Math.floor(p / tot * 84), `Scanning page ${p} of ${tot}…`);
+        await tick();
+      }
+    }
+
+    raw.sort((a, b) => a.num - b.num);
+    chapIndex = raw.map((c, i) => ({
+      num: c.num, title: c.title, sp: c.sp,
+      ep: i + 1 < raw.length ? raw[i + 1].sp - 1 : tot
+    }));
+
+    await saveChapters(file.name, chapIndex);
+    setP(100, `Found ${chapIndex.length} chapters!`);
+    await tick();
+    setTimeout(() => showReader(file.name, 0), 280);
+  } catch (e) { setP(0, 'Error: ' + e.message); }
+}
+
+async function detectPdfInfo(pdf, filename) {
+  let title = '', author = '';
+  try {
+    const meta = await pdf.getMetadata();
+    if (meta?.info?.Title) title = meta.info.Title.trim();
+    if (meta?.info?.Author) author = meta.info.Author.trim();
+  } catch {}
+  if (!title) {
+    try {
+      const page = await pdf.getPage(1);
+      const tc = await page.getTextContent();
+      let pt = '';
+      for (const it of tc.items) { pt += it.str; if (it.hasEOL) pt += '\n'; else pt += ' '; }
+      const m = pt.slice(0, 400).match(/^(.{4,90}?)\s+by\s+([A-Z][\w.''\- ]+)/i);
+      if (m) { if (!title) title = m[1].replace(/[:\-–]\s*$/, '').trim(); if (!author) author = m[2].trim(); }
+    } catch {}
+  }
+  if (!title) title = filename.replace(/\.pdf$/i, '').replace(/[_\-]+/g, ' ').trim();
+  return { title, author };
+}
+
+// ════════════════════════════════════════════════════════════
+// READER
+// ════════════════════════════════════════════════════════════
+function showReader(fname, startIdx) {
+  document.getElementById('s-load').style.display = 'none';
+  document.getElementById('s-read').style.display = 'flex';
+  saveBook(fname, chapIndex.length, startIdx, curBook.title, curBook.author, curBook.format);
+  document.getElementById('sbtitle').textContent = curBook.title;
+  buildList('');
+  goCh(startIdx || 0);
+  updateShelfBadge();
+}
+
+async function goCh(idx, pagePos) {
+  if (idx < 0 || idx >= chapIndex.length) return;
+  ci = idx; closeFn();
+  const ch = chapIndex[idx];
+
+  const lbl = ch.num ? 'Chapter ' + ch.num : (typeof ch === 'object' && ch.label ? '' : 'Chapter');
+  document.getElementById('ch-lbl').textContent = lbl || 'Section';
+  document.getElementById('ch-ttl').textContent = typeof ch === 'object' ? (ch.title || ch.label || '—') : '—';
+  document.getElementById('tch').textContent = curBook.title;
+  document.getElementById('tsub').textContent =
+    (ch.num ? 'Ch.' + ch.num : '') + (curBook.author ? ' · ' + curBook.author : '');
+
+  document.getElementById('ch-body').innerHTML = '<div id="lch">Loading…</div>';
+  document.getElementById('bp').disabled = idx === 0;
+  document.getElementById('bn').disabled = idx === chapIndex.length - 1;
+  document.getElementById('nm').textContent = (idx + 1) + ' / ' + chapIndex.length;
+
+  if (!isPageMode) {
+    document.getElementById('cs').scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  document.querySelectorAll('.chr').forEach(el =>
+    el.classList.toggle('on', parseInt(el.dataset.idx) === idx));
+  document.querySelector('.chr.on')?.scrollIntoView({ block: 'nearest' });
+
+  await saveProgress(getLocalLib()[0]?.n || '', idx, 0);
+
+  try {
+    let text = '';
+    if (curBook.format === 'epub') {
+      text = await readEpubChapter(ch);
+    } else {
+      const end = Math.min(ch.ep, ch.sp + 20);
+      for (let p = ch.sp; p <= end; p++) {
+        const tc = await (await pdfDoc.getPage(p)).getTextContent();
+        let pt = '';
+        for (const it of tc.items) { pt += it.str; if (it.hasEOL) pt += '\n'; else if (it.str.trim()) pt += ' '; }
+        text += pt + '\n';
+      }
+    }
+    document.getElementById('ch-body').innerHTML = renderText(text, ch.num || idx);
+  } catch (e) {
+    document.getElementById('ch-body').innerHTML =
+      `<p style="color:red;font-family:system-ui">Error loading chapter: ${xe(e.message)}</p>`;
+  }
+
+  if (isPageMode) {
+    await tick();
+    initPageMode(pagePos === 'last');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// TEXT RENDERING
+// ════════════════════════════════════════════════════════════
+function renderText(raw, chId) {
+  raw = raw.replace(/Chapter\s+\d+\s*[:\.\-–][^\n]*\n?/gi, '').replace(/\f/g, ' ');
+
+  const lines = raw.split('\n');
+  const fnMap = {};
+  let fnN = -1, fnA = [], bodyLines = [];
+  let autoFnCounter = 0;
+
+  for (const l of lines) {
+    // Detect numbered footnote: "1. Some text..."
+    const sm = l.trimStart().match(/^(\d+)\.\s+(\S.{3,})/);
+    if (sm) {
+      if (fnN > 0 && fnA.length) fnMap[fnN] = fnA.join(' ').replace(/☜/g, '').replace(/\s+/g, ' ').trim();
+      fnN = parseInt(sm[1]); fnA = [sm[2]];
+      if (l.includes('☜')) { fnMap[fnN] = fnA.join(' ').replace(/☜/g, '').trim(); fnN = -1; fnA = []; }
+      continue;
+    }
+    // Continue collecting multi-line footnote
+    if (fnN > 0) {
+      const t = l.trim(); if (t) fnA.push(t);
+      if (l.includes('☜')) { fnMap[fnN] = fnA.join(' ').replace(/☜/g, '').trim(); fnN = -1; fnA = []; }
+      continue;
+    }
+    bodyLines.push(l);
+  }
+  if (fnN > 0 && fnA.length) fnMap[fnN] = fnA.join(' ').replace(/☜/g, '').trim();
+  _fnMap[chId] = fnMap;
+
+  let body = bodyLines.join('\n');
+  body = body.replace(/([^.!?…"'»\])])\n([^\n])/g, '$1 $2');
+  body = body.replace(/\n{2,}/g, '\n').replace(/\s{2,}/g, ' ').trim();
+
+  // Convert (1), (2) style references to [1], [2] if footnotes exist for them
+  if (Object.keys(fnMap).length) {
+    body = body.replace(/\((\d+)\)(?=\s|$)/g, (m, n) => fnMap[n] ? `[${n}]` : m);
+  }
+
+  // Detect inline T/N, E/N, PR notes and register as numbered footnotes
+  // Pattern: "T/N: some note" or "TN: note" at the end of a line or paragraph
+  const tnPattern = /\b(T\/?N|TL\/?N|E\/?N|P\/?R|Trans(?:lator)?(?:'s)?\s*Note|Editor'?s?\s*Note)\s*[:\-]\s*(.+?)(?:\s*$)/gi;
+  body = body.replace(tnPattern, (m, label, note) => {
+    ++autoFnCounter;
+    const key = 9000 + autoFnCounter;
+    fnMap[key] = `${label}: ${note.trim()}`;
+    return `[${key}]`;
+  });
+  _fnMap[chId] = fnMap;
+
+  const sentences = splitSentences(body);
+  let html = '';
+  for (const s of sentences) {
+    const clean = s.replace(/\s+/g, ' ').trim();
+    if (clean.length < 3) continue;
+    const linked = clean.replace(/\[(\d+)\]/g, (m, n) =>
+      fnMap[n] ? `<button class="fr" id="fr-${chId}-${n}" onclick="openFn(${chId},${n})">[${n}]</button>` : m);
+    const cls = (/^["""«]/.test(clean) || /^[—–\-]/.test(clean)) ? 'dlg' : '';
+    html += `<p${cls ? ' class="' + cls + '"' : ''}>${linked}</p>`;
+  }
+
+  const keys = Object.keys(fnMap).map(Number).sort((a, b) => a - b);
+  if (keys.length) {
+    html += '<div class="fns">';
+    for (const n of keys) {
+      const label = n >= 9000 ? 'Note' : `[${n}]`;
+      const labelNum = n >= 9000 ? '' : `<strong>[${n}]</strong> `;
+      html += `<p id="fnd-${chId}-${n}"><button class="fb" onclick="fnScrollTo(${chId},${n})">↑</button>${labelNum}${xe(fnMap[n])}</p>`;
+    }
+    html += '</div>';
+  }
+  return html || `<p style="text-align:center;color:var(--muted);font-family:system-ui;padding:30px 0">No text content found in this chapter.</p>`;
+}
+
+function splitSentences(text) {
+  const abbr = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|No|Vol|Ch|Fig|approx|dept|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\./gi;
+  text = text.replace(abbr, (m, p) => p + '\x01');
+  text = text.replace(/\.\.\./g, '\x02');
+
+  // Quote-aware splitter: never breaks a sentence while inside an
+  // unclosed double quote (straight " or curly “ ”). This prevents
+  // dialogue like `said, "I'll stay here. You can go." Ta Shan looked up.`
+  // from being torn apart at the period inside the quotation.
+  const parts = [];
+  let cur = '';
+  let inQuote = false;
+  const OPEN_Q = '"\u201C';
+  const CLOSE_Q = '"\u201D';
+
+  const tryBreakAfter = (idx) => {
+    let j = idx + 1;
+    const rest = text.slice(j);
+    const m = rest.match(/^\s+(?=[A-Z0-9"\u201C\u2018'«\[])/);
+    if (m) { parts.push(cur); cur = ''; return j + m[0].length; }
+    return null;
+  };
+
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    cur += ch;
+
+    const isQuoteChar = OPEN_Q.includes(ch) || CLOSE_Q.includes(ch);
+    if (isQuoteChar) {
+      if (ch === '\u201C') inQuote = true;
+      else if (ch === '\u201D') inQuote = false;
+      else inQuote = !inQuote; // straight quote toggles open/close
+
+      if (!inQuote) {
+        const beforeQuote = cur.length >= 2 ? cur[cur.length - 2] : '';
+        if (/[.!?…]/.test(beforeQuote)) {
+          const brk = tryBreakAfter(i);
+          if (brk !== null) { i = brk; continue; }
+        }
+      }
+      i++; continue;
+    }
+
+    if (!inQuote && /[.!?…]/.test(ch)) {
+      let k = i + 1;
+      while (k < text.length && ')\]'.includes(text[k])) { cur += text[k]; k++; }
+      const brk = tryBreakAfter(k - 1);
+      if (brk !== null) { i = brk; continue; }
+      i = k; continue;
+    }
+    i++;
+  }
+  if (cur.trim()) parts.push(cur);
+
+  return parts.map(p => p.replace(/\x01/g, '.').replace(/\x02/g, '...'));
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGE MODE (Kindle-like)
+// ════════════════════════════════════════════════════════════
+function togglePageMode(enabled) {
+  isPageMode = enabled;
+  localStorage.setItem('npr_pagemode', enabled ? '1' : '0');
+  const cs = document.getElementById('cs');
+  const pageNav = document.getElementById('page-nav');
+  const nr = document.getElementById('nr');
+
+  if (enabled) {
+    cs.classList.add('page-mode');
+    pageNav.style.display = 'flex';
+    nr.style.display = 'none';
+    if (chapIndex.length) initPageMode();
+    showSwipeHint();
+  } else {
+    cs.classList.remove('page-mode');
+    pageNav.style.display = 'none';
+    nr.style.display = 'flex';
+    document.getElementById('cc').style.transform = '';
+    currentPage = 0;
+  }
+}
+
+async function initPageMode(goLast = false) {
+  await tick();
+  const cs = document.getElementById('cs');
+  const cc = document.getElementById('cc');
+  const viewH = cs.clientHeight;
+  const contentH = cc.scrollHeight;
+  totalPages = Math.max(1, Math.ceil(contentH / viewH));
+  currentPage = goLast ? Math.max(0, totalPages - 1) : 0;
+  applyPagePosition(false);
+  updatePageInfo();
+}
+
+function applyPagePosition(animate = true) {
+  const cs = document.getElementById('cs');
+  const cc = document.getElementById('cc');
+  const viewH = cs.clientHeight;
+  const offset = -(currentPage * viewH);
+  cc.style.transition = animate ? 'transform .28s cubic-bezier(.4,0,.2,1)' : 'none';
+  cc.style.transform = `translateY(${offset}px)`;
+}
+
+function flipPage(delta) {
+  const newPage = currentPage + delta;
+  if (newPage < 0) {
+    if (ci > 0) goCh(ci - 1, 'last'); return;
+  }
+  if (newPage >= totalPages) {
+    if (ci < chapIndex.length - 1) goCh(ci + 1, 'first'); return;
+  }
+  currentPage = newPage;
+  applyPagePosition(true);
+  updatePageInfo();
+}
+
+function updatePageInfo() {
+  const ch = chapIndex[ci];
+  const chTitle = ch ? (ch.title || ch.label || `Chapter ${ch.num || (ci + 1)}`) : '';
+  document.getElementById('page-info').innerHTML =
+    `Page ${currentPage + 1} / ${totalPages}<br><span style="font-size:11px;color:var(--muted)">${xe(chTitle)}</span>`;
+  document.getElementById('page-prev').disabled = currentPage === 0 && ci === 0;
+  document.getElementById('page-next').disabled = currentPage === totalPages - 1 && ci === chapIndex.length - 1;
+}
+
+function showSwipeHint() {
+  const hint = document.getElementById('swipe-hint');
+  hint.classList.add('show');
+  setTimeout(() => hint.classList.remove('show'), 2500);
+}
+
+function navPrev() { goCh(ci - 1); }
+function navNext() { goCh(ci + 1); }
+
+// ════════════════════════════════════════════════════════════
+// FOOTNOTES
+// ════════════════════════════════════════════════════════════
+function openFn(ch, n) {
+  _fnA = { n, c: ch };
+  const text = (_fnMap[ch] || {})[n] || '(Note not found)';
+  // Auto-detect note type for label
+  let label = `Note [${n}]`;
+  if (n >= 9000) label = 'Inline Note';
+  else if (/^(T\/?N|TL\/?N|Trans)/i.test(text)) label = `Translator's Note [${n}]`;
+  else if (/^(E\/?N|Editor)/i.test(text)) label = `Editor's Note [${n}]`;
+  else if (/^(P\/?R|Proofreader)/i.test(text)) label = `Proofreader's Note [${n}]`;
+  document.getElementById('fnlbl').textContent = label;
+  document.getElementById('fntxt').textContent = text;
+  document.getElementById('fnpop').classList.add('on');
+  document.getElementById('fnbg').classList.add('on');
+}
+function closeFn() {
+  document.getElementById('fnpop').classList.remove('on');
+  document.getElementById('fnbg').classList.remove('on');
+}
+function fnBack() { closeFn(); setTimeout(() => fnScrollTo(_fnA.c, _fnA.n), 240); }
+function fnScrollTo(ch, n) {
+  const el = document.getElementById('fr-' + ch + '-' + n);
+  if (!el) return;
+  const sc = document.getElementById('cs');
+  sc.scrollTo({ top: el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 100, behavior: 'smooth' });
+  el.style.outline = '2px solid var(--accent2)'; el.style.borderRadius = '4px';
+  setTimeout(() => { el.style.outline = ''; el.style.borderRadius = ''; }, 1800);
+}
+
+// ════════════════════════════════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════════════════════════════════
+function buildList(f) {
+  const list = document.getElementById('chl'); list.innerHTML = '';
+  const lc = f.toLowerCase();
+  for (let i = 0; i < chapIndex.length; i++) {
+    const c = chapIndex[i];
+    const label = c.title || c.label || `Chapter ${c.num || (i + 1)}`;
+    const numStr = c.num ? String(c.num) : String(i + 1);
+    if (f && !numStr.includes(lc) && !label.toLowerCase().includes(lc)) continue;
+    const el = document.createElement('div');
+    el.className = 'chr' + (i === ci ? ' on' : '');
+    el.dataset.idx = i;
+    el.innerHTML = `<span class="chn">${numStr}</span><span class="cht">${xe(label)}</span>`;
+    el.onclick = ((idx) => () => { goCh(idx); closeSB(); })(i);
+    list.appendChild(el);
+  }
+}
+function filterList(v) { buildList(v); }
+function toggleSB() { sbOpen ? closeSB() : openSB(); }
+function openSB() { sbOpen = true; document.getElementById('sb').classList.add('open'); document.getElementById('ov').classList.add('on'); }
+function closeSB() { sbOpen = false; document.getElementById('sb').classList.remove('open'); document.getElementById('ov').classList.remove('on'); }
+
+// ════════════════════════════════════════════════════════════
+// AI ASSISTANT
+// ════════════════════════════════════════════════════════════
+function toggleAI() { aiOpen ? closeAI() : openAI(); }
+function openAI() {
+  aiOpen = true;
+  document.getElementById('ai-panel').classList.add('on');
+  document.getElementById('ai-bg').classList.add('on');
+  setTimeout(() => document.getElementById('ai-input').focus(), 300);
+}
+function closeAI() {
+  aiOpen = false;
+  document.getElementById('ai-panel').classList.remove('on');
+  document.getElementById('ai-bg').classList.remove('on');
+}
+
+async function sendAI() {
+  const input = document.getElementById('ai-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const chat = document.getElementById('ai-chat');
+  const btn = document.getElementById('ai-send');
+  const hint = document.getElementById('ai-hint');
+
+  input.value = ''; input.style.height = ''; btn.disabled = true;
+  hint.style.display = 'none';
+
+  const userEl = document.createElement('div');
+  userEl.className = 'ai-msg user';
+  userEl.textContent = msg;
+  chat.appendChild(userEl);
+
+  const botEl = document.createElement('div');
+  botEl.className = 'ai-msg bot loading';
+  botEl.textContent = '…';
+  chat.appendChild(botEl);
+  chat.scrollTop = chat.scrollHeight;
+
+  const ch = chapIndex[ci];
+  const chTitle = ch ? (ch.title || ch.label || `Chapter ${ch.num || (ci + 1)}`) : '';
+
+  // Get chapter excerpt for context
+  let excerpt = '';
+  try {
+    const bodyEl = document.getElementById('ch-body');
+    excerpt = (bodyEl?.innerText || '').slice(0, 2000);
+  } catch {}
+
+  try {
+    const resp = await fetch('/api/ai-assist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: msg,
+        bookTitle: curBook.title,
+        chapterTitle: chTitle,
+        chapterExcerpt: excerpt
+      })
+    });
+
+    if (!resp.ok) throw new Error('AI service error');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    botEl.classList.remove('loading');
+    botEl.textContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      botEl.textContent += decoder.decode(value, { stream: true });
+      chat.scrollTop = chat.scrollHeight;
+    }
+  } catch (e) {
+    botEl.classList.remove('loading');
+    botEl.textContent = 'Sorry, AI assistant is not available right now. Make sure the app is deployed to Netlify.';
+  }
+
+  btn.disabled = false;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function autoResizeTA(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+}
+
+// ════════════════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════════════════
+function toggleSD() { sdOpen = !sdOpen; document.getElementById('sdd').classList.toggle('on', sdOpen); }
+
+const TC = { sepia: '#7a4f28', light: '#1e3a5f', dark: '#111', night: '#070710', grn: '#1a441a' };
+function setTheme(n, el) {
+  document.body.className = n === 'sepia' ? '' : n;
+  document.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+  el.classList.add('on');
+  localStorage.setItem('npr_theme', n);
+  document.getElementById('tc').content = TC[n] || '#7a4f28';
+}
+
+function setFSRange(v) {
+  document.documentElement.style.setProperty('--fs', v + 'px');
+  document.getElementById('fs-val').textContent = v + 'px';
+  localStorage.setItem('npr_fs', v);
+}
+function setLH(v, btn) {
+  document.documentElement.style.setProperty('--lh', v);
+  document.querySelectorAll('#lhb .sdb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); localStorage.setItem('npr_lh', v);
+}
+function setFF(v, btn) {
+  document.documentElement.style.setProperty('--ff', v);
+  document.querySelectorAll('#ffb .sdb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); localStorage.setItem('npr_ff', v);
+}
+function setTA(v, btn) {
+  document.documentElement.style.setProperty('--ta', v);
+  document.querySelectorAll('#tab .sdb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); localStorage.setItem('npr_ta', v);
+}
+function setMG(v, btn) {
+  document.documentElement.style.setProperty('--mg', v);
+  document.querySelectorAll('#mgb .sdb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); localStorage.setItem('npr_mg', v);
+}
+function setFW(v, btn) {
+  document.documentElement.style.setProperty('--fw', v);
+  document.querySelectorAll('#fwb .sdb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); localStorage.setItem('npr_fw', v);
+}
+
+function restorePrefs() {
+  const t = localStorage.getItem('npr_theme') || 'sepia';
+  if (t !== 'sepia') {
+    document.body.className = t;
+    document.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+    const map = { dark: 'dk', night: 'ni', light: 'li', grn: 'gr', sepia: 'sp' };
+    document.querySelector('.sw-' + (map[t] || 'sp'))?.classList.add('on');
+  }
+
+  const fs = localStorage.getItem('npr_fs') || '18';
+  document.documentElement.style.setProperty('--fs', fs + 'px');
+  document.getElementById('fs-range').value = fs;
+  document.getElementById('fs-val').textContent = fs + 'px';
+
+  const lh = localStorage.getItem('npr_lh') || '1.9';
+  document.documentElement.style.setProperty('--lh', lh);
+  document.querySelectorAll('#lhb .sdb').forEach(b => {
+    if (b.getAttribute('onclick')?.includes(lh)) { b.classList.add('on'); }
+    else b.classList.remove('on');
+  });
+
+  const ff = localStorage.getItem('npr_ff') || 'Georgia,serif';
+  document.documentElement.style.setProperty('--ff', ff);
+  document.querySelectorAll('#ffb .sdb').forEach(b => {
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes(ff.replace(/,/g, '.*').slice(0, 10)));
+  });
+
+  const ta = localStorage.getItem('npr_ta') || 'left';
+  document.documentElement.style.setProperty('--ta', ta);
+  document.querySelectorAll('#tab .sdb').forEach(b => {
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes(`'${ta}'`));
+  });
+
+  const mg = localStorage.getItem('npr_mg') || '22px';
+  document.documentElement.style.setProperty('--mg', mg);
+  document.querySelectorAll('#mgb .sdb').forEach(b => {
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes(`'${mg}'`));
+  });
+
+  const fw = localStorage.getItem('npr_fw') || '700px';
+  document.documentElement.style.setProperty('--fw', fw);
+  document.querySelectorAll('#fwb .sdb').forEach(b => {
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes(`'${fw}'`));
+  });
+
+  const pm = localStorage.getItem('npr_pagemode') === '1';
+  if (pm) {
+    document.getElementById('page-mode-toggle').checked = true;
+    isPageMode = true;
+    document.getElementById('cs').classList.add('page-mode');
+    document.getElementById('page-nav').style.display = 'flex';
+    document.getElementById('nr').style.display = 'none';
+  }
+}
+
+function closeReader() {
+  document.getElementById('s-read').style.display = 'none';
+  document.getElementById('s-load').style.display = 'flex';
+  document.getElementById('prog').style.display = 'none';
+  document.getElementById('pbar').style.width = '0';
+  document.getElementById('dz') && (document.getElementById('dz').style.display = '');
+  pdfDoc = null; epubBook = null; chapIndex = []; ci = 0;
+  curBook = { title: 'Novel PDF Reader', author: '', format: 'pdf' };
+  updateShelfBadge();
+}
+
+// ════════════════════════════════════════════════════════════
+// PWA
+// ════════════════════════════════════════════════════════════
+let deferredInstall = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredInstall = e;
+  document.getElementById('inst-sub').textContent = 'Tap to install now ✓';
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('inst-card').style.display = 'none';
+});
+
+if ('serviceWorker' in navigator) {
+  const sw = `self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',()=>clients.claim());self.addEventListener('fetch',e=>{if(/cdnjs|jsdelivr/.test(e.request.url)){e.respondWith(caches.open('novelreader-v2').then(c=>c.match(e.request).then(r=>r||(fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;})))));}}); `;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], { type: 'text/javascript' }))).catch(() => {});
+}
+
+function doInstall() {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    deferredInstall.userChoice.then(() => { deferredInstall = null; });
+  } else {
+    const ua = navigator.userAgent;
+    let msg = '';
+    if (/iPhone|iPad/i.test(ua)) msg = '📱 iOS:\n1. Tap Share (bottom toolbar)\n2. Tap "Add to Home Screen"\n3. Tap Add ✓';
+    else if (/Android/i.test(ua)) msg = '📱 Android Chrome:\n1. Tap ⋮ menu (top right)\n2. Tap "Add to Home Screen" or "Install app"\n3. Tap Add ✓\n\n⚠️ Must use Chrome browser.';
+    else msg = '💻 Desktop:\n• Look for ⊕ icon in browser address bar\n• Or: browser menu → "Install Novel PDF Reader"';
+    alert(msg);
+  }
+}
+
+const instSub = document.getElementById('inst-sub');
+if (/iPhone|iPad/i.test(navigator.userAgent)) instSub.textContent = 'Tap Share → "Add to Home Screen"';
+else if (/Android/i.test(navigator.userAgent)) instSub.textContent = 'Chrome menu ⋮ → "Add to Home Screen"';
+else instSub.textContent = 'Click ⊕ in the browser address bar';
+
+// ════════════════════════════════════════════════════════════
+// TOUCH / SWIPE NAVIGATION
+// ════════════════════════════════════════════════════════════
+let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+let swipeAnimating = false;
+
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (document.getElementById('s-read').style.display === 'none') return;
+  if (swipeAnimating) return;
+  if (aiOpen || sdOpen) return; // panels are open — don't swipe
+
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  const dt = Date.now() - touchStartTime;
+
+  // Sidebar swipe-open from left edge
+  if (dx > 60 && touchStartX < 32 && !sbOpen) { openSB(); return; }
+  if (dx < -60 && sbOpen) { closeSB(); return; }
+  if (sbOpen) return;
+
+  // Page mode swipe
+  if (isPageMode) {
+    const isHorizontal = Math.abs(dx) > Math.abs(dy);
+    const isFast = dt < 500;
+    const isSignificant = Math.abs(dx) > 40;
+    if (isHorizontal && isFast && isSignificant) {
+      swipeAnimating = true;
+      if (dx < 0) flipPage(1);
+      else flipPage(-1);
+      setTimeout(() => { swipeAnimating = false; }, 350);
+    }
+    return;
+  }
+
+  // Scroll mode: edge swipe for chapters
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 350) {
+    if (dx < 0 && touchStartX > window.innerWidth * 0.7) goCh(ci + 1);
+    if (dx > 0 && touchStartX < window.innerWidth * 0.3) goCh(ci - 1);
+  }
+}, { passive: true });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (isPageMode) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') flipPage(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') flipPage(-1);
+  } else {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goCh(ci + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goCh(ci - 1);
+  }
+  if (e.key === 'Escape') { closeFn(); closeSB(); if (sdOpen) toggleSD(); closeAI(); }
+});
+
+// Drag & drop on load screen
+const dz = document.getElementById('s-load');
+if (dz) {
+  dz.addEventListener('dragover', e => e.preventDefault());
+  dz.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) startLoad(f); });
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function showProg() {
+  document.getElementById('prog').style.display = 'flex';
+}
+function setP(p, m) {
+  document.getElementById('pbar').style.width = p + '%';
+  document.getElementById('pmsg').textContent = m;
+}
+function xe(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function tick() { return new Promise(r => setTimeout(r, 0)); }
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+restorePrefs();
+updateShelfBadge();
+</script>
+</body>
+</html>
